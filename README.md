@@ -22,7 +22,7 @@ sudo apt update && sudo apt upgrade -y
 curl -fsSL https://ollama.com/install.sh | sh
 
 # 2. Pull the chat model + embedding model
-ollama pull qwen2.5:7b
+ollama pull qwen3:4b
 ollama pull nomic-embed-text
 
 # 3. Install Tesseract OCR + Indonesian language pack
