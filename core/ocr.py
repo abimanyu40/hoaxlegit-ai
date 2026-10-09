@@ -4,8 +4,8 @@ import pytesseract
 
 def extract_text_from_image(image_path: str, lang: str = "ind+eng") -> str:
     """
-    Extract teks dari gambar/screenshot pesan.
-    Butuh tesseract-ocr terinstall di sistem + paket bahasa Indonesia.
+    Extract text from an image/message screenshot.
+    Requires tesseract-ocr installed on the system, plus the Indonesian language pack.
     """
     try:
         image = Image.open(image_path)
@@ -13,7 +13,7 @@ def extract_text_from_image(image_path: str, lang: str = "ind+eng") -> str:
         return text.strip()
     except pytesseract.TesseractNotFoundError:
         raise RuntimeError(
-            "Tesseract belum terinstall. Di Ubuntu/WSL: sudo apt install tesseract-ocr tesseract-ocr-ind"
+            "Tesseract is not installed. On Ubuntu/WSL: sudo apt install tesseract-ocr tesseract-ocr-ind"
         )
     except Exception as e:
-        raise RuntimeError(f"Gagal baca gambar: {e}")
+        raise RuntimeError(f"Failed to read image: {e}")

@@ -1,116 +1,118 @@
-# Dokumentasi Teknis — Cek Hoax
+# Technical Documentation — Hoax Checker
 
-Referensi lengkap semua file dan fungsi di project. Kode sumber lengkap ada di file masing-masing (`chat.py`, `app.py`, `core/*.py`).
+Full reference of every file and function in the project. The complete source is in each file (`chat.py`, `app.py`, `core/*.py`).
 
 ---
 
-## `chat.py` — Entry point terminal
+## `chat.py` — Terminal entry point
 
-| Fungsi | Parameter | Return | Fungsinya |
+| Function | Parameters | Returns | Purpose |
 |---|---|---|---|
-| `check_and_report(message, source_input, use_cache)` | pesan, tipe sumber ("text"/"image"/"batch"), pakai cache atau tidak | `str` (verdict) | Cek cache dulu via `find_cached()`, kalau kosong panggil `check_message()`, simpan hasil ke DB |
-| `mode_text_check()` | - | - | Input pesan dari `input()`, panggil `check_and_report()` |
-| `mode_image_check()` | - | - | Minta path gambar, OCR via `extract_text_from_image()`, lanjut cek |
-| `mode_batch_check()` | - | - | Baca file `.txt`/`.csv`, loop tiap baris, tulis rekap ke `<nama>_hasil.csv` |
-| `mode_history()` | - | - | Ambil riwayat dari `get_history()`, print terformat |
-| `main()` | - | - | Loop menu utama, dispatch ke fungsi mode di atas |
+| `check_and_report(message, source_input, use_cache)` | message, input type ("text"/"image"/"batch"), whether to use the cache | `str` (verdict) | Checks the cache via `find_cached()`, otherwise calls `check_message()` and saves the result to the DB |
+| `mode_text_check()` | - | - | Reads a message via `input()` and calls `check_and_report()` |
+| `mode_image_check()` | - | - | Asks for an image path, OCRs it via `extract_text_from_image()`, then checks the text |
+| `mode_batch_check()` | - | - | Reads a `.txt`/`.csv` file, loops over each message, writes a summary to `<name>_results.csv` |
+| `mode_history()` | - | - | Fetches history via `get_history()` and prints it |
+| `main()` | - | - | Main menu loop, dispatches to the mode functions above |
 
 ---
 
-## `app.py` — Entry point GUI (Streamlit)
+## `app.py` — GUI entry point (Streamlit)
 
-Sama fungsinya kayak `chat.py`, bedanya I/O pakai widget Streamlit (`st.text_area`, `st.file_uploader`, `st.button`, dst) bukan `input()`/`print()`. 4 tab: Cek Teks, Cek Gambar, Batch Check, Riwayat. Logic inti (`check_message`, `save_check`, dll) dipanggil sama persis dari `core/`.
+Same functionality as `chat.py`, but I/O uses Streamlit widgets (`st.text_area`, `st.file_uploader`, `st.button`, ...) instead of `input()`/`print()`. Four tabs: Text Check, Image Check, Batch Check, History. The core logic (`check_message`, `save_check`, etc.) is called from `core/` exactly as in the terminal version.
 
-`run_check(message, source_input)` — versi Streamlit dari `check_and_report()`, pakai `st.spinner()` buat loading indicator dan `st.markdown()` buat nampilin hasil.
+`run_check(message, source_input)` — the Streamlit version of `check_and_report()`, using `st.spinner()` as a loading indicator and `st.markdown()` to display the result.
 
 ---
 
-## `core/ollama_client.py` — Orkestrasi LLM
+## `core/ollama_client.py` — LLM orchestration
 
-| Fungsi | Parameter | Return | Fungsinya |
+| Function | Parameters | Returns | Purpose |
 |---|---|---|---|
-| `_call_ollama(messages, use_tools)` | list messages, boleh pakai tools atau tidak | `dict` (JSON response Ollama) | POST request mentah ke `/api/chat` |
-| `_build_kb_context(user_message)` | pesan user | `str` | Panggil `knowledge_base.search()`, format hasilnya jadi teks konteks tambahan. Return string kosong kalau KB gagal/gak ada match |
-| `check_message(user_message, max_tool_rounds)` | pesan user, max iterasi tool call | `(str, list)` — (jawaban final, list query yang di-search) | Fungsi utama: susun messages (system + KB context + user), loop panggil Ollama, kalau ada `tool_calls` jalanin `run_tool()` dan lanjut loop, kalau gak ada return jawaban final |
+| `_call_ollama(messages, use_tools)` | message list, whether to send tools | `dict` (Ollama JSON response) | Raw POST request to `/api/chat` |
+| `_build_kb_context(user_message)` | user message | `str` | Calls `knowledge_base.search()` and formats the matches as extra context. Returns an empty string if the KB fails or has no match |
+| `check_message(user_message, max_tool_rounds)` | user message, max tool-call iterations | `(str, list)` — (final answer, list of search queries used) | Main function: builds messages (system + KB context + user), loops over Ollama calls, runs `run_tool()` when there are `tool_calls`, returns the final answer when there are none |
 
-Konstanta: `MODEL = "qwen2.5:7b"` (model chat), diimport dari `core.tools` dan `core.knowledge_base`.
+Constant: `MODEL = "qwen3:4b"` (chat model). Imports from `core.tools` and `core.knowledge_base`.
 
 ---
 
 ## `core/tools.py` — Web search & cross-check
 
-| Fungsi | Parameter | Return | Fungsinya |
+| Function | Parameters | Returns | Purpose |
 |---|---|---|---|
-| `_search_raw(query, max_results)` | keyword, jumlah hasil | `list[dict]` | Wrapper `duckduckgo_search.DDGS().text()`, return list kosong kalau error |
-| `cross_check_search(claim)` | klaim yang mau dicek | `str` | Search klaim langsung + search "fakta/hoax/bantahan {klaim}", gabung & dedupe by URL, tag tiap hasil pakai `score_source()` |
-| `run_tool(name, arguments)` | nama tool, argumen dari LLM | `str` | Dispatcher — saat ini cuma handle `"web_search"` |
+| `_search_raw(query, max_results)` | keywords, number of results | `list[dict]` | Wrapper around `duckduckgo_search.DDGS().text()`, returns an empty list on error |
+| `cross_check_search(claim)` | claim to verify | `str` | Searches the claim directly + searches "fact check OR hoax OR debunked {claim}", merges and dedupes by URL, tags each result using `score_source()` |
+| `run_tool(name, arguments)` | tool name, arguments from the LLM | `str` | Dispatcher — currently only handles `"web_search"` |
 
-`TOOLS_SCHEMA` — JSON schema yang dikirim ke Ollama biar LLM tahu tool apa aja yang available dan formatnya gimana (standar OpenAI-style function calling).
+`TOOLS_SCHEMA` — the JSON schema sent to Ollama so the LLM knows which tools are available and their format (OpenAI-style function calling).
 
 ---
 
-## `core/credibility.py` — Skor kredibilitas sumber
+## `core/credibility.py` — Source credibility scoring
 
-| Fungsi | Parameter | Return | Fungsinya |
+| Function | Parameters | Returns | Purpose |
 |---|---|---|---|
-| `score_source(url)` | URL sumber | `dict` `{domain, score, tier}` | Extract domain dari URL, cocokkan ke `CREDIBILITY_TIERS`, kalau gak ketemu pakai `DEFAULT_SCORE` |
-| `_label(score)` | angka skor | `str` | Konversi skor jadi label ("Sangat kredibel" / "Cukup kredibel" / "Tidak dikenal") |
+| `score_source(url)` | source URL | `dict` `{domain, score, tier}` | Extracts the domain from the URL, matches it against `CREDIBILITY_TIERS`, falls back to `DEFAULT_SCORE` |
+| `_label(score)` | numeric score | `str` | Converts a score to a label ("Highly credible" / "Fairly credible" / "Unknown / use caution") |
 
-`CREDIBILITY_TIERS` — dictionary domain → skor (0.0–1.0), manual, bisa ditambah sendiri.
+`CREDIBILITY_TIERS` — a dictionary of domain → score (0.0–1.0), maintained manually and easy to extend.
 
 ---
 
-## `core/knowledge_base.py` — RAG hoax lama
+## `core/knowledge_base.py` — Past-hoax RAG
 
-| Fungsi | Parameter | Return | Fungsinya |
+| Function | Parameters | Returns | Purpose |
 |---|---|---|---|
-| `_get_embedding(text)` | teks | `list[float]` | Panggil `/api/embeddings` Ollama (model `nomic-embed-text`), dapet vector |
-| `_cosine_similarity(a, b)` | dua vector | `float` | Hitung kemiripan arah dua vector (dot product / perkalian norma) |
-| `build_index(force)` | paksa rebuild atau tidak | - | Embed semua entri `known_hoaxes.json`, simpan ke cache `known_hoaxes_embeddings.json`. Skip kalau cache udah ada (kecuali `force=True`) |
-| `search(query, top_k, min_similarity)` | klaim baru, jumlah hasil maks, ambang kemiripan | `list[dict]` | Embed query, bandingkan ke semua entri cache, filter & sort by similarity |
+| `_get_embedding(text)` | text | `list[float]` | Calls Ollama's `/api/embeddings` (model `nomic-embed-text`) and returns a vector |
+| `_cosine_similarity(a, b)` | two vectors | `float` | Measures how similar two vectors' directions are (dot product / product of norms) |
+| `build_index(force)` | force a rebuild or not | - | Embeds every entry in `known_hoaxes.json` and saves it to the cache `known_hoaxes_embeddings.json`. Skipped if the cache already exists (unless `force=True`) |
+| `search(query, top_k, min_similarity)` | new claim, max results, similarity threshold | `list[dict]` | Embeds the query, compares it to all cached entries, filters and sorts by similarity |
 
 ---
 
-## `core/database.py` — Riwayat & cache (SQLite)
+## `core/database.py` — History & cache (SQLite)
 
-| Fungsi | Parameter | Return | Fungsinya |
+| Function | Parameters | Returns | Purpose |
 |---|---|---|---|
-| `init_db()` | - | - | Bikin file `data/history.db` + tabel `checks` kalau belum ada |
-| `save_check(message, verdict, sources, source_input)` | pesan, hasil, list query search, tipe sumber | - | Insert row baru ke tabel `checks` |
-| `get_history(limit)` | jumlah maks | `list[dict]` | Ambil N entri terakhir, urut terbaru dulu |
-| `find_cached(message)` | pesan | `dict` atau `None` | Cari exact match pesan yang sama persis, buat cache |
+| `init_db()` | - | - | Creates the `data/history.db` file + `checks` table if they don't exist |
+| `save_check(message, verdict, sources, source_input)` | message, result, list of search queries, input type | - | Inserts a new row into `checks` |
+| `get_history(limit)` | max entries | `list[dict]` | Fetches the latest N entries, newest first |
+| `find_cached(message)` | message | `dict` or `None` | Looks for an exact match of the same message, for caching |
 
-Skema tabel `checks`: `id, timestamp, message, verdict, sources (JSON string), source_input`.
+`checks` table schema: `id, timestamp, message, verdict, sources (JSON string), source_input`.
+
+`core/database_mysql.py` is an optional MySQL drop-in with the same four functions.
 
 ---
 
-## `core/ocr.py` — Extract teks dari gambar
+## `core/ocr.py` — Extract text from images
 
-| Fungsi | Parameter | Return | Fungsinya |
+| Function | Parameters | Returns | Purpose |
 |---|---|---|---|
-| `extract_text_from_image(image_path, lang)` | path gambar, kode bahasa Tesseract | `str` | Buka gambar via PIL, jalankan `pytesseract.image_to_string()`. Raise error jelas kalau Tesseract belum terinstall |
+| `extract_text_from_image(image_path, lang)` | image path, Tesseract language code | `str` | Opens the image with PIL and runs `pytesseract.image_to_string()`. Raises a clear error if Tesseract is not installed |
 
 ---
 
 ## `core/prompts.py`
 
-Cuma satu konstanta: `SYSTEM_PROMPT` — instruksi lengkap ke LLM soal cara analisis (ekstrak klaim, cek KB, search kalau perlu, prioritaskan sumber kredibel, format jawaban).
+A single constant: `SYSTEM_PROMPT` — full instructions for the LLM on how to analyze a message (extract claims, check the KB, search if needed, prioritize credible sources, answer format).
 
 ---
 
-## Alur data lengkap (satu kali cek)
+## Full data flow (one check)
 
 ```
-User input (teks/gambar)
+User input (text/image)
     │
     ▼
-[OCR kalau gambar] → teks
+[OCR if image] → text
     │
     ▼
-find_cached() ── ada? ──▶ tampilkan hasil lama, SELESAI
-    │ (tidak ada)
+find_cached() ── found? ──▶ show the old result, DONE
+    │ (not found)
     ▼
-_build_kb_context() ── embed pesan, cari mirip di known_hoaxes.json
+_build_kb_context() ── embed the message, find similar entries in known_hoaxes.json
     │
     ▼
 check_message()
@@ -119,21 +121,21 @@ check_message()
 messages = [system_prompt, kb_context?, user_message]
     │
     ▼
-┌─────────────── loop (maks 3x) ───────────────┐
+┌─────────────── loop (max 3x) ───────────────┐
 │ _call_ollama(messages)                       │
 │    │                                         │
-│    ├─ ada tool_calls? ──▶ run_tool()         │
-│    │                       └─ cross_check_search()
-│    │                            └─ score_source() tiap hasil
-│    │                       └─ hasil di-append ke messages
-│    │                       └─ ULANG LOOP
+│    ├─ tool_calls? ──▶ run_tool()             │
+│    │                   └─ cross_check_search()
+│    │                        └─ score_source() per result
+│    │                   └─ result appended to messages
+│    │                   └─ LOOP AGAIN         │
 │    │                                         │
-│    └─ tidak ada tool_calls ──▶ jawaban final │
+│    └─ no tool_calls ──▶ final answer         │
 └───────────────────────────────────────────────┘
     │
     ▼
-save_check() → simpan ke SQLite
+save_check() → store in SQLite
     │
     ▼
-Tampilkan ke user (terminal/GUI)
+Display to the user (terminal/GUI)
 ```

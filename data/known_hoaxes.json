@@ -1,12 +1,12 @@
 [
   {
-    "claim": "Contoh: minum air kelapa bisa menyembuhkan semua penyakit dalam 1 hari",
+    "claim": "Example: drinking coconut water cures all diseases in 1 day",
     "verdict": "Hoax",
-    "explanation": "Contoh entri placeholder. Ganti dengan klaim hoax nyata yang sudah diverifikasi, misalnya dari arsip turnbackhoax.id atau cekfakta.com."
+    "explanation": "Placeholder example entry. Replace with real, verified hoax claims, e.g. from the turnbackhoax.id or cekfakta.com archives."
   },
   {
-    "claim": "Contoh: pesan berantai soal modus penipuan transfer bank tertentu",
-    "verdict": "Perlu verifikasi",
-    "explanation": "Contoh entri placeholder. Isi database ini dengan klaim-klaim yang sering viral di komunitas/daerah kamu, sudah diverifikasi Kominfo/media kredibel."
+    "claim": "Example: chain message about a specific bank transfer scam",
+    "verdict": "Needs verification",
+    "explanation": "Placeholder example entry. Fill this database with claims that often go viral in your community/region, verified by Kominfo or credible media."
   }
 ]

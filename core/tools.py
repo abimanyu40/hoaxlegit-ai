@@ -7,14 +7,14 @@ TOOLS_SCHEMA = [
         "type": "function",
         "function": {
             "name": "web_search",
-            "description": "Cari informasi terbaru di internet untuk memverifikasi sebuah klaim. "
-                            "Otomatis melakukan cross-check dari sisi klaim langsung dan sisi bantahan/fakta.",
+            "description": "Search the internet for current information to verify a claim. "
+                            "Automatically cross-checks both the claim itself and fact-check/rebuttal sources.",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "query": {
                         "type": "string",
-                        "description": "Klaim inti yang mau diverifikasi (bukan kata kunci pencarian mentah)."
+                        "description": "The core claim to verify (not a raw keyword search)."
                     }
                 },
                 "required": ["query"]
@@ -34,11 +34,11 @@ def _search_raw(query: str, max_results: int = 3):
 
 def cross_check_search(claim: str) -> str:
     """
-    Multi-source cross-check: search klaim langsung + search sisi bantahan/fakta,
-    lalu tag tiap hasil dengan skor kredibilitas sumbernya.
+    Multi-source cross-check: search the claim directly + search the rebuttal/fact-check side,
+    then tag each result with its source credibility score.
     """
     direct_results = _search_raw(claim, max_results=3)
-    fact_check_results = _search_raw(f"fakta OR hoax OR bantahan {claim}", max_results=3)
+    fact_check_results = _search_raw(f"fact check OR hoax OR debunked {claim}", max_results=3)
 
     all_results = direct_results + fact_check_results
     seen_urls = set()
@@ -54,11 +54,11 @@ def cross_check_search(claim: str) -> str:
         formatted.append(
             f"- {r.get('title', '')}\n"
             f"  {r.get('body', '')}\n"
-            f"  Sumber: {href} (Kredibilitas: {credibility['tier']}, skor {credibility['score']})"
+            f"  Source: {href} (Credibility: {credibility['tier']}, score {credibility['score']})"
         )
 
     if not formatted:
-        return "Tidak ada hasil pencarian yang ditemukan untuk klaim ini."
+        return "No search results were found for this claim."
 
     return "\n\n".join(formatted)
 
@@ -66,4 +66,4 @@ def cross_check_search(claim: str) -> str:
 def run_tool(name: str, arguments: dict) -> str:
     if name == "web_search":
         return cross_check_search(arguments.get("query", ""))
-    return f"Tool '{name}' tidak dikenal."
+    return f"Unknown tool: '{name}'."

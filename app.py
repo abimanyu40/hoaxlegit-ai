@@ -7,25 +7,25 @@ from core.database import init_db, save_check, get_history, find_cached
 from core.ollama_client import check_message
 from core.ocr import extract_text_from_image
 
-st.set_page_config(page_title="Cek Hoax", page_icon="🔍", layout="centered")
+st.set_page_config(page_title="Hoax Checker", page_icon="🔍", layout="centered")
 init_db()
 
-st.title("🔍 Cek Hoax")
-st.caption("Cek pesan viral pakai LLM lokal (Ollama) + verifikasi internet.")
+st.title("🔍 Hoax Checker")
+st.caption("Check viral messages using a local LLM (Ollama) + internet verification.")
 
-tab_teks, tab_gambar, tab_batch, tab_riwayat = st.tabs(
-    ["Cek Teks", "Cek Gambar", "Batch Check", "Riwayat"]
+tab_text, tab_image, tab_batch, tab_history = st.tabs(
+    ["Text Check", "Image Check", "Batch Check", "History"]
 )
 
 
 def run_check(message: str, source_input: str = "text"):
     cached = find_cached(message)
     if cached:
-        st.info(f"Pesan ini pernah dicek pada {cached['timestamp']}")
+        st.info(f"This message was already checked on {cached['timestamp']}")
         st.markdown(cached["verdict"])
         return cached["verdict"]
 
-    with st.spinner("Menganalisis (search internet + cek database hoax lama)..."):
+    with st.spinner("Analyzing (searching the internet + checking the hoax knowledge base)..."):
         verdict, sources = check_message(message)
 
     save_check(message, verdict, sources, source_input)
@@ -33,27 +33,27 @@ def run_check(message: str, source_input: str = "text"):
     return verdict
 
 
-# --- Tab: Cek Teks ---
-with tab_teks:
-    message = st.text_area("Paste pesan yang mau dicek", height=150)
-    if st.button("Cek sekarang", key="btn_teks"):
+# --- Tab: Text Check ---
+with tab_text:
+    message = st.text_area("Paste the message you want to check", height=150)
+    if st.button("Check now", key="btn_text"):
         if message.strip():
             run_check(message.strip(), source_input="text")
         else:
-            st.warning("Pesannya masih kosong.")
+            st.warning("The message is empty.")
 
 
-# --- Tab: Cek Gambar ---
-with tab_gambar:
+# --- Tab: Image Check ---
+with tab_image:
     uploaded_image = st.file_uploader(
-        "Upload screenshot pesan", type=["png", "jpg", "jpeg"]
+        "Upload a message screenshot", type=["png", "jpg", "jpeg"]
     )
     if uploaded_image:
         st.image(uploaded_image, caption="Preview", use_container_width=True)
 
-    if st.button("Extract & Cek", key="btn_gambar"):
+    if st.button("Extract & Check", key="btn_image"):
         if uploaded_image:
-            # simpan sementara biar bisa dibaca pytesseract
+            # save temporarily so pytesseract can read it
             temp_path = f"/tmp/{uploaded_image.name}"
             with open(temp_path, "wb") as f:
                 f.write(uploaded_image.getbuffer())
@@ -65,25 +65,25 @@ with tab_gambar:
                 text = ""
 
             if text:
-                st.text_area("Teks yang terbaca", value=text, height=100, disabled=True)
+                st.text_area("Extracted text", value=text, height=100, disabled=True)
                 run_check(text, source_input="image")
             else:
-                st.warning("Tidak ada teks yang terbaca dari gambar.")
+                st.warning("No text could be read from the image.")
         else:
-            st.warning("Upload gambar dulu.")
+            st.warning("Upload an image first.")
 
 
 # --- Tab: Batch Check ---
 with tab_batch:
     uploaded_file = st.file_uploader(
-        "Upload file .txt (1 pesan per baris) atau .csv (kolom 'message')",
+        "Upload a .txt file (1 message per line) or .csv (column 'message')",
         type=["txt", "csv"],
         key="batch_uploader",
     )
 
-    if st.button("Proses batch", key="btn_batch"):
+    if st.button("Process batch", key="btn_batch"):
         if not uploaded_file:
-            st.warning("Upload file dulu.")
+            st.warning("Upload a file first.")
         else:
             content = uploaded_file.getvalue().decode("utf-8")
             if uploaded_file.name.endswith(".csv"):
@@ -93,9 +93,9 @@ with tab_batch:
                 messages = [line.strip() for line in content.splitlines() if line.strip()]
 
             if not messages:
-                st.warning("Tidak ada pesan ditemukan di file.")
+                st.warning("No messages found in the file.")
             else:
-                st.write(f"Ditemukan {len(messages)} pesan. Memproses...")
+                st.write(f"Found {len(messages)} messages. Processing...")
                 progress = st.progress(0)
                 results = []
 
@@ -105,34 +105,34 @@ with tab_batch:
                     results.append({"message": msg, "verdict": verdict})
                     progress.progress((i + 1) / len(messages))
 
-                st.success("Selesai!")
+                st.success("Done!")
                 for r in results:
                     with st.expander(r["message"][:80]):
                         st.markdown(r["verdict"])
 
-                # tombol download rekap CSV
+                # CSV summary download button
                 output = io.StringIO()
                 writer = csv.DictWriter(output, fieldnames=["message", "verdict"])
                 writer.writeheader()
                 writer.writerows(results)
                 st.download_button(
-                    "Download rekap CSV",
+                    "Download CSV summary",
                     data=output.getvalue(),
-                    file_name="hasil_batch.csv",
+                    file_name="batch_results.csv",
                     mime="text/csv",
                 )
 
 
-# --- Tab: Riwayat ---
-with tab_riwayat:
-    limit = st.slider("Jumlah entri terakhir", 5, 50, 10)
+# --- Tab: History ---
+with tab_history:
+    limit = st.slider("Number of recent entries", 5, 50, 10)
     history = get_history(limit)
 
     if not history:
-        st.info("Belum ada riwayat.")
+        st.info("No history yet.")
     else:
         for h in history:
             with st.expander(f"[{h['timestamp']}] ({h['source_input']}) — {h['message'][:60]}"):
-                st.write("**Pesan:**", h["message"])
-                st.markdown("**Hasil:**")
+                st.write("**Message:**", h["message"])
+                st.markdown("**Result:**")
                 st.markdown(h["verdict"])

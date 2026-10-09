@@ -1,8 +1,8 @@
 from urllib.parse import urlparse
 
-# Skor 0.0 - 1.0. Silakan tambah/sesuaikan daftar ini.
+# Score 0.0 - 1.0. Feel free to add to or adjust this list.
 CREDIBILITY_TIERS = {
-    # Resmi pemerintah / lembaga fact-check
+    # Official government / fact-checking institutions
     "kominfo.go.id": 1.0,
     "turnbackhoax.id": 1.0,
     "cekfakta.com": 0.95,
@@ -10,7 +10,7 @@ CREDIBILITY_TIERS = {
     "kemkes.go.id": 1.0,
     "who.int": 1.0,
 
-    # Media arus utama nasional
+    # National mainstream media
     "kompas.com": 0.85,
     "antaranews.com": 0.85,
     "detik.com": 0.8,
@@ -18,13 +18,13 @@ CREDIBILITY_TIERS = {
     "cnnindonesia.com": 0.8,
     "liputan6.com": 0.75,
 
-    # Media internasional kredibel
+    # Credible international media
     "reuters.com": 0.9,
     "bbc.com": 0.85,
     "apnews.com": 0.9,
 }
 
-DEFAULT_SCORE = 0.3  # sumber tidak dikenal
+DEFAULT_SCORE = 0.3  # unknown source
 
 
 def score_source(url: str) -> dict:
@@ -37,8 +37,8 @@ def score_source(url: str) -> dict:
 
 def _label(score: float) -> str:
     if score >= 0.8:
-        return "Sangat kredibel"
+        return "Highly credible"
     elif score >= 0.5:
-        return "Cukup kredibel"
+        return "Fairly credible"
     else:
-        return "Tidak dikenal / perlu hati-hati"
+        return "Unknown / use caution"

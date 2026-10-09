@@ -6,7 +6,7 @@ import mysql.connector
 DB_CONFIG = {
     "host": "localhost",
     "user": "hoaxapp",
-    "password": "password_lo",  # ganti sesuai yang dibuat pas CREATE USER
+    "password": "your_password",  # change to the one you set in CREATE USER
     "database": "hoax_checker",
 }
 

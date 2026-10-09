@@ -5,7 +5,7 @@ from pathlib import Path
 import requests
 
 OLLAMA_EMBED_URL = "http://localhost:11434/api/embeddings"
-EMBED_MODEL = "nomic-embed-text"  # jalankan: ollama pull nomic-embed-text
+EMBED_MODEL = "nomic-embed-text"  # run: ollama pull nomic-embed-text
 
 DATA_PATH = Path(__file__).parent.parent / "data" / "known_hoaxes.json"
 CACHE_PATH = Path(__file__).parent.parent / "data" / "known_hoaxes_embeddings.json"
@@ -27,7 +27,7 @@ def _cosine_similarity(a: list, b: list) -> float:
 
 
 def build_index(force: bool = False):
-    """Precompute embeddings untuk semua entri di known_hoaxes.json, cache ke file."""
+    """Precompute embeddings for every entry in known_hoaxes.json and cache them to a file."""
     if CACHE_PATH.exists() and not force:
         return
 
@@ -42,7 +42,7 @@ def build_index(force: bool = False):
 
 
 def search(query: str, top_k: int = 3, min_similarity: float = 0.6) -> list:
-    """Cari entri hoax lama yang mirip dengan klaim baru."""
+    """Find previously verified hoax entries similar to a new claim."""
     build_index()
 
     with open(CACHE_PATH, "r", encoding="utf-8") as f:

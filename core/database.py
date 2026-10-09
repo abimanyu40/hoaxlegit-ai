@@ -44,7 +44,7 @@ def get_history(limit: int = 20):
 
 
 def find_cached(message: str):
-    """Cek apakah pesan yang sama persis pernah dicek sebelumnya."""
+    """Check whether the exact same message was checked before."""
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     row = conn.execute(

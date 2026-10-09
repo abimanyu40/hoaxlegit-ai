@@ -1,5 +1,4 @@
 import csv
-import sys
 from pathlib import Path
 
 from core.database import init_db, save_check, get_history, find_cached
@@ -11,27 +10,27 @@ def check_and_report(message: str, source_input: str = "text", use_cache: bool =
     if use_cache:
         cached = find_cached(message)
         if cached:
-            print(f"\n[Pesan ini pernah dicek pada {cached['timestamp']}]")
-            print(f"Hasil:\n{cached['verdict']}\n")
+            print(f"\n[This message was already checked on {cached['timestamp']}]")
+            print(f"Result:\n{cached['verdict']}\n")
             return cached["verdict"]
 
-    print("\nMenganalisis...\n")
+    print("\nAnalyzing...\n")
     verdict, sources = check_message(message)
-    print(f"Hasil:\n{verdict}\n")
+    print(f"Result:\n{verdict}\n")
     save_check(message, verdict, sources, source_input)
     return verdict
 
 
 def mode_text_check():
-    message = input("Paste pesan yang mau dicek: ").strip()
+    message = input("Paste the message you want to check: ").strip()
     if message:
         check_and_report(message, source_input="text")
 
 
 def mode_image_check():
-    path = input("Path ke file gambar (screenshot): ").strip()
+    path = input("Path to the image file (screenshot): ").strip()
     if not Path(path).exists():
-        print("File tidak ditemukan.")
+        print("File not found.")
         return
     try:
         text = extract_text_from_image(path)
@@ -40,18 +39,18 @@ def mode_image_check():
         return
 
     if not text:
-        print("Tidak ada teks yang terbaca dari gambar.")
+        print("No text could be read from the image.")
         return
 
-    print(f"\nTeks yang terbaca:\n{text}\n")
+    print(f"\nExtracted text:\n{text}\n")
     check_and_report(text, source_input="image")
 
 
 def mode_batch_check():
-    path = input("Path ke file .txt (1 pesan per baris) atau .csv (kolom 'message'): ").strip()
+    path = input("Path to a .txt file (1 message per line) or .csv (column 'message'): ").strip()
     file_path = Path(path)
     if not file_path.exists():
-        print("File tidak ditemukan.")
+        print("File not found.")
         return
 
     messages = []
@@ -64,51 +63,51 @@ def mode_batch_check():
             messages = [line.strip() for line in f if line.strip()]
 
     if not messages:
-        print("Tidak ada pesan yang ditemukan di file.")
+        print("No messages found in the file.")
         return
 
-    print(f"Ditemukan {len(messages)} pesan. Memproses...\n")
+    print(f"Found {len(messages)} messages. Processing...\n")
     results = []
     for i, msg in enumerate(messages, 1):
-        print(f"--- Pesan {i}/{len(messages)} ---")
+        print(f"--- Message {i}/{len(messages)} ---")
         verdict = check_and_report(msg, source_input="batch")
         results.append({"message": msg, "verdict": verdict})
 
-    output_path = file_path.parent / f"{file_path.stem}_hasil.csv"
+    output_path = file_path.parent / f"{file_path.stem}_results.csv"
     with open(output_path, "w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=["message", "verdict"])
         writer.writeheader()
         writer.writerows(results)
 
-    print(f"\nSelesai. Rekap disimpan di: {output_path}")
+    print(f"\nDone. Summary saved to: {output_path}")
 
 
 def mode_history():
-    limit = input("Tampilkan berapa entri terakhir? (default 10): ").strip()
+    limit = input("How many recent entries to show? (default 10): ").strip()
     limit = int(limit) if limit.isdigit() else 10
 
     history = get_history(limit)
     if not history:
-        print("Belum ada riwayat.")
+        print("No history yet.")
         return
 
     for h in history:
         print(f"\n[{h['timestamp']}] ({h['source_input']})")
-        print(f"Pesan: {h['message'][:100]}{'...' if len(h['message']) > 100 else ''}")
+        print(f"Message: {h['message'][:100]}{'...' if len(h['message']) > 100 else ''}")
         print(f"Verdict: {h['verdict'][:200]}{'...' if len(h['verdict']) > 200 else ''}")
         print("-" * 50)
 
 
 def main():
     init_db()
-    print("=== Cek Hoax ===\n")
+    print("=== Hoax Checker ===\n")
 
     menu = {
-        "1": ("Cek pesan teks", mode_text_check),
-        "2": ("Cek dari gambar/screenshot (OCR)", mode_image_check),
-        "3": ("Batch check dari file", mode_batch_check),
-        "4": ("Lihat riwayat", mode_history),
-        "5": ("Keluar", None),
+        "1": ("Check a text message", mode_text_check),
+        "2": ("Check from an image/screenshot (OCR)", mode_image_check),
+        "3": ("Batch check from a file", mode_batch_check),
+        "4": ("View history", mode_history),
+        "5": ("Exit", None),
     }
 
     while True:
@@ -116,14 +115,14 @@ def main():
         for key, (label, _) in menu.items():
             print(f"  {key}. {label}")
 
-        choice = input("\nPilih: ").strip()
+        choice = input("\nChoose: ").strip()
         if choice == "5":
             break
         elif choice in menu:
             _, func = menu[choice]
             func()
         else:
-            print("Pilihan tidak valid.")
+            print("Invalid choice.")
 
 
 if __name__ == "__main__":

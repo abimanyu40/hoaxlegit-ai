@@ -5,7 +5,7 @@ from core.tools import TOOLS_SCHEMA, run_tool
 from core import knowledge_base
 
 OLLAMA_URL = "http://localhost:11434/api/chat"
-MODEL = "qwen2.5:7b"  # ganti ke qwen2.5:3b kalau berat di RTX 2050
+MODEL = "qwen3:4b"  # fits a 4GB GPU (RTX 2050); try qwen3:8b for better quality (slower)
 
 
 def _call_ollama(messages, use_tools=True):
@@ -23,27 +23,27 @@ def _call_ollama(messages, use_tools=True):
 
 
 def _build_kb_context(user_message: str) -> str:
-    """Cari klaim mirip di database hoax lama, format jadi konteks tambahan."""
+    """Look up similar claims in the past-hoax database and format them as extra context."""
     try:
         matches = knowledge_base.search(user_message)
     except Exception:
-        return ""  # KB gagal (misal model embedding belum di-pull), skip aja
+        return ""  # knowledge base failed (e.g. embedding model not pulled yet), skip it
 
     if not matches:
         return ""
 
-    lines = ["Database hoax yang sudah pernah diverifikasi (kemiripan tinggi):"]
+    lines = ["Previously verified hoax database (high similarity):"]
     for m in matches:
         lines.append(
-            f"- Klaim serupa: \"{m['claim']}\" -> Verdict: {m['verdict']} "
-            f"(kemiripan {m['similarity']})\n  Penjelasan: {m['explanation']}"
+            f"- Similar claim: \"{m['claim']}\" -> Verdict: {m['verdict']} "
+            f"(similarity {m['similarity']})\n  Explanation: {m['explanation']}"
         )
     return "\n".join(lines)
 
 
 def check_message(user_message: str, max_tool_rounds: int = 3) -> tuple[str, list]:
     """
-    Cek satu pesan. Return (jawaban_final, daftar_sumber_yang_dipakai).
+    Check a single message. Returns (final_answer, list_of_search_queries_used).
     """
     from core.prompts import SYSTEM_PROMPT
 
@@ -74,7 +74,7 @@ def check_message(user_message: str, max_tool_rounds: int = 3) -> tuple[str, lis
                 fn_args = json.loads(fn_args)
 
             query = fn_args.get("query", "")
-            print(f"[mencari: {query}]")
+            print(f"[searching: {query}]")
             result = run_tool(fn_name, fn_args)
             sources_used.append(query)
 
